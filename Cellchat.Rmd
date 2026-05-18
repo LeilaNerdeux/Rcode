@@ -1,0 +1,445 @@
+---
+title: "CellChat"
+output: html_document
+date: "2026-05-18"
+---
+
+# **Data processing**
+```{r,message=FALSE, warning=FALSE}
+#Clean environment
+rm(list=ls())
+
+#Load packages
+library(dplyr)
+library(ggplot2)
+library(CellChat)
+library(Seurat)
+library(SeuratObject)
+library(ggplot2)
+library(tidyr)
+
+#Set working directory
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+
+#Load data
+data <- readRDS("Prog.Neu_refined.Rds")   
+
+
+#Generate a data frame with row names containing cell meta data
+meta <- data.frame(labels = data$predictions2, row.names = names(data$predictions2))
+head(meta)
+
+
+#Create a cellchat object
+custom_order <- c("RP", "dp1", "dp2", "dp3", "dp4", "dp5", "dp6","p0",
+                  "p1", "p2", "pMN","p3","FP",
+                  "dl1", "dl2", "dl3", "dl4", "dl5", "dl6",
+                  "V0", "V1", "V2a", "V2b","MN", "V3")
+
+data$predictions2 <- factor(data$predictions2, levels = custom_order)
+levels(data$predictions2)
+
+cellchat <- createCellChat(object = data, 
+                           group.by = "predictions2", 
+                           assay = "RNA")
+
+#Add cell meta information and assign the cell identities to each cell
+cellchat <- addMeta(cellchat, meta = meta)
+cellchat <- setIdent(cellchat, ident.use = "labels")
+
+levels(cellchat@idents)
+cellchat@idents <- factor(cellchat@idents, levels = custom_order)
+levels(cellchat@idents)
+
+# Set the selected database in the object
+cellchat@DB <- CellChatDB.human
+
+# Subset the expression data matrix using genes relevant to the selected L–R pairs. 
+cellchat <- subsetData(cellchat)
+
+# Identify over-expreeses L or R to infer the cell state-specific communications
+options(future.globals.maxSize = 8000 * 1024^2)
+future::plan("multisession", workers = 4)
+
+cellchat <- identifyOverExpressedGenes(cellchat, thresh.pc = 0.1, thresh.fc = 0.4) 
+cellchat <- identifyOverExpressedInteractions(cellchat)
+
+#Create new cellchat objects
+cellchat_trim_0.25 <- cellchat
+cellchat_trim_0.20 <- cellchat
+cellchat_trim_0.15 <- cellchat
+cellchat_trim_0.10 <- cellchat
+cellchat_trim_0.05 <- cellchat
+
+cellchat_trimean<- cellchat
+
+```
+
+
+# **Compute probabilities**
+```{r,message=FALSE, warning=FALSE}
+future::plan("sequential")
+
+cellchat_trim_0.25<- computeCommunProb(cellchat_trim_0.25, type = "truncatedMean", trim = 0.25, raw.use = TRUE)
+cellchat_trim_0.20<- computeCommunProb(cellchat_trim_0.20, type = "truncatedMean", trim = 0.20, raw.use = TRUE)
+cellchat_trim_0.15<- computeCommunProb(cellchat_trim_0.15, type = "truncatedMean", trim = 0.15, raw.use = TRUE)
+cellchat_trim_0.10<- computeCommunProb(cellchat_trim_0.10, type = "truncatedMean", trim = 0.10, raw.use = TRUE)
+cellchat_trim_0.05<- computeCommunProb(cellchat_trim_0.05, type = "truncatedMean", trim = 0.05, raw.use = TRUE)
+
+cellchat_trimean<- computeCommunProb(cellchat_trimean, type = "triMean", raw.use = TRUE)
+
+```
+
+
+# **Finalize and save cellchat object**
+```{r,message=FALSE, warning=FALSE}
+
+#Filter communication
+cellchat_trim_0.25 <- filterCommunication(cellchat_trim_0.25, min.cells = 10)
+cellchat_trim_0.20 <- filterCommunication(cellchat_trim_0.20, min.cells = 10)
+cellchat_trim_0.15 <- filterCommunication(cellchat_trim_0.15, min.cells = 10)
+cellchat_trim_0.10 <- filterCommunication(cellchat_trim_0.10, min.cells = 10)
+cellchat_trim_0.05 <- filterCommunication(cellchat_trim_0.05, min.cells = 10)
+
+cellchat_trimean <- filterCommunication(cellchat_trimean, min.cells = 10)
+
+
+#Extract all interactions as a data frame 
+all_interactions_0.25 <- subsetCommunication(cellchat_trim_0.25, slot.name = "net", thresh = 0.05)
+write.csv(all_interactions_0.25, file = "all_interactions_individuals_LRs_factor_0.25.csv", row.names = FALSE)
+
+all_interactions_0.20 <- subsetCommunication(cellchat_trim_0.20, slot.name = "net", thresh = 0.05)
+write.csv(all_interactions_0.20, file = "all_interactions_individuals_LRs_factor_0.20.csv", row.names = FALSE)
+
+all_interactions_0.15 <- subsetCommunication(cellchat_trim_0.15, slot.name = "net", thresh = 0.05)
+write.csv(all_interactions_0.15, file = "all_interactions_individuals_LRs_factor_0.15.csv", row.names = FALSE)
+
+all_interactions_0.10 <- subsetCommunication(cellchat_trim_0.10, slot.name = "net", thresh = 0.05)
+write.csv(all_interactions_0.10, file = "all_interactions_individuals_LRs_factor_0.10.csv", row.names = FALSE)
+
+all_interactions_0.05 <- subsetCommunication(cellchat_trim_0.05, slot.name = "net", thresh = 0.05)
+write.csv(all_interactions_0.05, file = "all_interactions_individuals_LRs_factor_0.05.csv", row.names = FALSE)
+
+
+all_interactions_trimean<- subsetCommunication(cellchat_trimean, slot.name = "net", thresh = 0.05)
+write.csv(all_interactions_trimean, file = "all_interactions_individuals_LRs_factor_trimean.csv", row.names = FALSE)
+
+
+
+
+
+
+#Infer communicqtion qt pathway level
+cellchat_trim_0.25 <- computeCommunProbPathway(cellchat_trim_0.25)
+cellchat_trim_0.20 <- computeCommunProbPathway(cellchat_trim_0.20)
+cellchat_trim_0.15 <- computeCommunProbPathway(cellchat_trim_0.15)
+cellchat_trim_0.10 <- computeCommunProbPathway(cellchat_trim_0.10)
+cellchat_trim_0.05 <- computeCommunProbPathway(cellchat_trim_0.05)
+
+cellchat_trimean <- computeCommunProbPathway(cellchat_trimean)
+
+
+
+#Extract pathways
+pathway_interactions_0.25 <- subsetCommunication(cellchat_trim_0.25, slot.name = "netP",thresh = 0.05)
+write.csv(pathway_interactions_0.25, file = "all_interactions_pathways_level_0.25.csv", row.names = FALSE)
+
+pathway_interactions_0.20 <- subsetCommunication(cellchat_trim_0.20, slot.name = "netP",thresh = 0.05)
+write.csv(pathway_interactions_0.20, file = "all_interactions_pathways_level_0.20.csv", row.names = FALSE)
+
+pathway_interactions_0.15 <- subsetCommunication(cellchat_trim_0.15, slot.name = "netP",thresh = 0.05)
+write.csv(pathway_interactions_0.15, file = "all_interactions_pathways_level_0.15.csv", row.names = FALSE)
+
+pathway_interactions_0.10 <- subsetCommunication(cellchat_trim_0.10, slot.name = "netP",thresh = 0.05)
+write.csv(pathway_interactions_0.10, file = "all_interactions_pathways_level_0.10.csv", row.names = FALSE)
+
+pathway_interactions_0.05 <- subsetCommunication(cellchat_trim_0.05, slot.name = "netP",thresh = 0.05)
+write.csv(pathway_interactions_0.05, file = "all_interactions_pathways_level_0.05.csv", row.names = FALSE)
+
+pathway_interactions_trimean <- subsetCommunication(cellchat_trimean, slot.name = "netP",thresh = 0.05)
+write.csv(pathway_interactions_trimean, file = "all_interactions_pathways_level_trimean.csv", row.names = FALSE)
+
+
+#Aggregate
+cellchat_trim_0.25<- aggregateNet(cellchat_trim_0.25)
+cellchat_trim_0.20<- aggregateNet(cellchat_trim_0.20)
+cellchat_trim_0.15<- aggregateNet(cellchat_trim_0.15)
+cellchat_trim_0.10<- aggregateNet(cellchat_trim_0.10)
+cellchat_trim_0.05<- aggregateNet(cellchat_trim_0.05)
+
+cellchat_trimean<- aggregateNet(cellchat_trimean)
+
+
+
+#Compute network centrality
+cellchat_trim_0.25 <- netAnalysis_computeCentrality(cellchat_trim_0.25, slot.name = "netP")
+cellchat_trim_0.20 <- netAnalysis_computeCentrality(cellchat_trim_0.20, slot.name = "netP")
+cellchat_trim_0.15 <- netAnalysis_computeCentrality(cellchat_trim_0.15, slot.name = "netP")
+cellchat_trim_0.10 <- netAnalysis_computeCentrality(cellchat_trim_0.10, slot.name = "netP")
+cellchat_trim_0.05 <- netAnalysis_computeCentrality(cellchat_trim_0.05, slot.name = "netP")
+
+cellchat_trimean <- netAnalysis_computeCentrality(cellchat_trimean, slot.name = "netP")
+
+
+
+#Save as RDS
+saveRDS(cellchat_trim_0.25, file = "cellchat_trim_0.25.rds")
+saveRDS(cellchat_trim_0.20, file = "cellchat_trim_0.20.rds")
+saveRDS(cellchat_trim_0.15, file = "cellchat_trim_0.15.rds")
+saveRDS(cellchat_trim_0.10, file = "cellchat_trim_0.10.rds")
+saveRDS(cellchat_trim_0.05, file = "cellchat_trim_0.05.rds")
+
+saveRDS(cellchat_trimean, file = "cellchat_trimean.rds")
+
+
+
+cellchat_trim_0.25 <- readRDS("cellchat_trim_0.25.rds")   
+cellchat_trim_0.20 <- readRDS("cellchat_trim_0.20.rds")
+cellchat_trim_0.15 <- readRDS("cellchat_trim_0.15.rds")
+cellchat_trim_0.10 <- readRDS("cellchat_trim_0.10.rds")
+cellchat_trim_0.05 <- readRDS("cellchat_trim_0.05.rds")
+cellchat_trimean <- readRDS("cellchat_trimean.rds")
+```
+
+# **Compare trim parameters**
+```{r,message=FALSE, warning=FALSE}
+#Generate dataframe
+pathway_strength_0.25 <- apply(cellchat_trim_0.25@netP$prob, 3, sum)
+strength_0.25 <- data.frame(pathway = names(pathway_strength_0.25), strength = pathway_strength_0.25)
+strength_0.25$rank <- rank(-strength_0.25$strength, ties.method = "min")
+
+pathway_strength_0.20 <- apply(cellchat_trim_0.20@netP$prob, 3, sum)
+strength_0.20 <- data.frame(pathway = names(pathway_strength_0.20), strength = pathway_strength_0.20)
+strength_0.20$rank <- rank(-strength_0.20$strength, ties.method = "min")
+
+pathway_strength_0.15 <- apply(cellchat_trim_0.15@netP$prob, 3, sum)
+strength_0.15 <- data.frame(pathway = names(pathway_strength_0.15), strength = pathway_strength_0.15)
+strength_0.15$rank <- rank(-strength_0.15$strength, ties.method = "min")
+
+pathway_strength_0.10 <- apply(cellchat_trim_0.10@netP$prob, 3, sum)
+strength_0.10 <- data.frame(pathway = names(pathway_strength_0.10), strength = pathway_strength_0.10)
+strength_0.10$rank <- rank(-strength_0.10$strength, ties.method = "min")
+
+pathway_strength_0.05 <- apply(cellchat_trim_0.05@netP$prob, 3, sum)
+strength_0.05 <- data.frame(pathway = names(pathway_strength_0.05), strength = pathway_strength_0.05)
+strength_0.05$rank <- rank(-strength_0.05$strength, ties.method = "min")
+
+pathway_strength_trimean <- apply(cellchat_trimean@netP$prob, 3, sum)
+strength_trimean <- data.frame(pathway = names(pathway_strength_trimean), strength = pathway_strength_trimean)
+strength_trimean$rank <- rank(-strength_trimean$strength, ties.method = "min")
+
+
+#create a combined dataframe by sorting by pathway
+params <- c("triMean","0.25", "0.20", "0.15", "0.10", "0.05")
+df_list <- list(strength_trimean, strength_0.25, strength_0.20, strength_0.15, strength_0.10, strength_0.05)
+
+combined_by_pathway <- Reduce(function(x, y) full_join(x, y, by = "pathway"), 
+  mapply(function(df, p) {
+    df %>% select(pathway, strength) %>% rename(!!paste0("strength_", p) := strength)
+  }, df_list, params, SIMPLIFY = FALSE)
+)
+
+
+#create a combined dataframe by sorting by rank
+combined_by_rank <- Reduce(function(x, y) full_join(x, y, by = "rank"),
+  mapply(function(df, p) {
+    df %>% arrange(rank) %>% select(rank, strength) %>%
+      rename(!!paste0("strength_", p) := strength)
+  }, df_list, params, SIMPLIFY = FALSE)
+)
+
+
+strength_trimean
+strength_0.25
+strength_0.20
+strength_0.15
+strength_0.10
+strength_0.05
+combined_by_rank
+combined_by_pathway
+
+
+
+#Plot by pathway
+# Pivot to long format
+combined_long <- combined_by_pathway %>%
+  pivot_longer(cols = starts_with("strength_"),
+               names_to = "parameter",
+               names_prefix = "strength_",
+               values_to = "strength")
+
+# Order pathways by mean strength (strongest on the left)
+combined_long <- combined_long %>%
+  group_by(pathway) %>%
+  mutate(mean_strength = mean(strength, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(pathway = reorder(pathway, -mean_strength))
+
+
+# Plot
+pdf("strength_VS_pathways", width = 7, height =4)
+ggplot(combined_long, aes(x = pathway, y = strength, color = parameter, group = parameter)) +
+  geom_line() +
+  geom_point() +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Pathway", y = "Strength", color = "Parameter")
+dev.off()
+
+#Plot by rank
+# Pivot to long format
+combined_long_rank <- combined_by_rank %>%
+  pivot_longer(cols = starts_with("strength_"),
+               names_to = "parameter",
+               names_prefix = "strength_",
+               values_to = "strength")
+
+# Plot
+ggplot(combined_long_rank, aes(x = rank, y = strength, color = parameter, group = parameter)) +
+  geom_line() +
+  geom_point() +
+  theme_bw() +
+  labs(x = "Rank", y = "Strength", color = "Parameter") +
+  scale_x_continuous(breaks = scales::pretty_breaks())
+```
+
+
+### *20a. Vizualize contribution of each L-P pair within each pathway*
+```{r, fig.width=20, fig.height=25, fig.show='hold', out.width='100%'}
+# Compute and visualize the contribution of each associated L–R pair within a particular signaling pathway
+plots <- map(all_pathways, ~ {
+  netAnalysis_contribution(cellchat_trim_0.05, signaling = .x) +
+    ggtitle(.x) +
+    theme_minimal() +
+    theme(legend.position = "none", plot.title = element_text(size = 9))
+})
+
+
+
+pdf("contribution_of_LR_pairs_within_pathway.pdf", width = 18, height = 20)
+print(wrap_plots(plots, ncol = 4, nrow = 8))
+dev.off()
+```
+
+
+#Plots
+```{r,message=FALSE, warning=FALSE}
+
+all_pathways <-c("MK","PTN","NCAM","CD99","CDH","CADM","SLIT")
+
+
+#Group cells to improve vizualisation
+group.cellType <- c(
+  RP = "morphogen",
+  FP = "morphogen",
+  dp1 = "progenitors", 
+  dp2 = "progenitors", 
+  dp3 = "progenitors", 
+  dp4 = "progenitors", 
+  dp5 = "progenitors", 
+  dp6 = "progenitors",
+  dl1 = "neurons", 
+  dl2 = "neurons", 
+  dl3 = "neurons",
+  dl4 = "neurons", 
+  dl5 = "neurons", 
+  dl6 = "neurons",
+  p0 = "progenitors", 
+  p1 = "progenitors", 
+  p2 = "progenitors",
+  pMN = "progenitors",
+  p3 = "progenitors",
+  V0 = "neurons", 
+  V1 = "neurons", 
+  V2a = "neurons",
+  V2b = "neurons",
+  MN = "neurons",
+  V3 = "neurons"
+)
+
+
+## Plot chord diagram for all pathways
+# Create PDF with all chord diagrams
+pdf("individual_pathways_chord_diagrams.pdf", width = 12, height = 12)
+
+for (pathway in all_pathways) {
+  netVisual_chord_cell(cellchat_trim_0.05, 
+                       signaling = pathway, 
+                       group = group.cellType,
+                       title.name = paste0(pathway, " Signaling Network"))
+}
+
+dev.off()
+
+##########################################################################
+
+
+# Identify the major outgoing signaling events
+ht1 <- netAnalysis_signalingRole_heatmap(cellchat_trim_0.05, pattern = "outgoing", height = 12, width = 12, color.heatmap = "OrRd")
+ht1
+
+# Identify the major incoming signaling events
+ht2 <- netAnalysis_signalingRole_heatmap(cellchat_trim_0.05, pattern = "incoming",height = 12, width = 12, color.heatmap = "YlGn")
+ht2
+
+# Show the major outgoing and incoming signaling events together
+pdf("major_outgoing_incoming_signaling_events.pdf", width = 12, height = 12)
+ht1  + ht2 
+dev.off()
+
+
+
+##########################################################################
+
+pdf("all_pathways_signaling_roles.pdf", width = 10, height = 6)
+for (pathway in all_pathways) {
+ 
+  netAnalysis_signalingRole_network(cellchat_trim_0.05, 
+                                     signaling = pathway, 
+                                     width = 18, 
+                                     height = 4, 
+                                     font.size = 10)
+  }
+dev.off()
+
+
+##########################################################################
+#Plot average expression overtime
+data <- readRDS("Prog.Neu_refined.Rds") 
+
+AverageExpression(
+  data,
+  slot = "data",
+  features = "CD99",
+  group.by = c("predictions2", "Age"),
+  return.seurat = FALSE
+)
+
+AverageExpression(
+  data,
+  slot = "data",
+  features = "MDK",
+  group.by = c("predictions2", "Age"),
+  return.seurat = FALSE
+)
+
+AverageExpression(
+  data,
+  slot = "data",
+  features = "NCL",
+  group.by = c("predictions2", "Age"),
+  return.seurat = FALSE
+)
+
+AverageExpression(
+  data,
+  slot = "data",
+  features = "PTN",
+  group.by = c("predictions2", "Age"),
+  return.seurat = FALSE
+)
+
+```
+
+
+

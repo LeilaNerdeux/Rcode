@@ -1,0 +1,707 @@
+
+
+# Prepare data for GSEA
+```{r,message=FALSE, warning=FALSE}
+
+#Set working directory
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+getwd()
+
+#Load data
+degs <- readRDS("Prog.Neu.degs.UP.DOWN.batch.corrected.Rds")   
+
+
+#Load packages
+library(clusterProfiler)
+library(enrichplot)
+library(ggplot2)
+library(org.Hs.eg.db)
+require(DOSE)
+library(ReactomePA)
+library(patchwork)
+library(dplyr)
+
+#Subset degs by cluster
+#progenitors
+degs_RP <- subset(degs, cluster == "RP")
+degs_dp1 <- subset(degs, cluster == "dp1")
+degs_dp2 <- subset(degs, cluster == "dp2")
+degs_dp3 <- subset(degs, cluster == "dp3")
+degs_dp4 <- subset(degs, cluster == "dp4")
+degs_dp5 <- subset(degs, cluster == "dp5")
+degs_dp6 <- subset(degs, cluster == "dp6")
+degs_p0 <- subset(degs, cluster == "p0")
+degs_p1 <- subset(degs, cluster == "p1")
+degs_p2 <- subset(degs, cluster == "p2")
+degs_pMN <- subset(degs, cluster == "pMN")
+degs_p3 <- subset(degs, cluster == "p3")
+degs_FP <- subset(degs, cluster == "FP")
+
+#neurons
+degs_dl1 <- subset(degs, cluster == "dl1")
+degs_dl2 <- subset(degs, cluster == "dl2")
+degs_dl3 <- subset(degs, cluster == "dl3")
+degs_dl4 <- subset(degs, cluster == "dl4")
+degs_dl5 <- subset(degs, cluster == "dl5")
+degs_dl6 <- subset(degs, cluster == "dl6")
+degs_V0 <- subset(degs, cluster == "V0")
+degs_V1 <- subset(degs, cluster == "V1")
+degs_V2a <- subset(degs, cluster == "V2a")
+degs_V2b <- subset(degs, cluster == "V2b")
+degs_MN <- subset(degs, cluster == "MN")
+degs_V3 <- subset(degs, cluster == "V3")
+
+```
+
+# GSEA GO 
+## Sort gene list for each domain
+```{r,message=FALSE, warning=FALSE}
+
+#RP
+gene_list_RP <- degs_RP$avg_log2FC                    # get log2 fold change (ranking metric)
+names(gene_list_RP) <- degs_RP$gene                   # assign genes names to their log2FC
+gene_list_RP = sort(gene_list_RP, decreasing = TRUE)  # sort the list in decreasing order
+
+#dp1
+gene_list_dp1 <- degs_dp1$avg_log2FC                  
+names(gene_list_dp1) <- degs_dp1$gene                 
+gene_list_dp1 = sort(gene_list_dp1, decreasing = TRUE)
+
+#dp2
+gene_list_dp2 <- degs_dp2$avg_log2FC                  
+names(gene_list_dp2) <- degs_dp2$gene                 
+gene_list_dp2 = sort(gene_list_dp2, decreasing = TRUE)
+
+#dp3
+gene_list_dp3 <- degs_dp3$avg_log2FC                  
+names(gene_list_dp3) <- degs_dp3$gene                 
+gene_list_dp3 = sort(gene_list_dp3, decreasing = TRUE)
+
+#dp4
+gene_list_dp4 <- degs_dp4$avg_log2FC                  
+names(gene_list_dp4) <- degs_dp4$gene                 
+gene_list_dp4 = sort(gene_list_dp4, decreasing = TRUE)
+
+#dp5
+gene_list_dp5 <- degs_dp5$avg_log2FC                  
+names(gene_list_dp5) <- degs_dp5$gene                 
+gene_list_dp5 = sort(gene_list_dp5, decreasing = TRUE)
+
+#dp6
+gene_list_dp6 <- degs_dp6$avg_log2FC                  
+names(gene_list_dp6) <- degs_dp6$gene                 
+gene_list_dp6 = sort(gene_list_dp6, decreasing = TRUE)
+
+#p0
+gene_list_p0 <- degs_p0$avg_log2FC                  
+names(gene_list_p0) <- degs_p0$gene                 
+gene_list_p0 = sort(gene_list_p0, decreasing = TRUE)
+
+#p1
+gene_list_p1 <- degs_p1$avg_log2FC                  
+names(gene_list_p1) <- degs_p1$gene                 
+gene_list_p1 = sort(gene_list_p1, decreasing = TRUE)
+
+#p2
+gene_list_p2 <- degs_p2$avg_log2FC                  
+names(gene_list_p2) <- degs_p2$gene                 
+gene_list_p2 = sort(gene_list_p2, decreasing = TRUE)
+
+#pMN
+gene_list_pMN <- degs_pMN$avg_log2FC                  
+names(gene_list_pMN) <- degs_pMN$gene                 
+gene_list_pMN = sort(gene_list_pMN, decreasing = TRUE)
+
+#p3
+gene_list_p3 <- degs_p3$avg_log2FC                  
+names(gene_list_p3) <- degs_p3$gene                 
+gene_list_p3 = sort(gene_list_p3, decreasing = TRUE)
+
+#FP
+gene_list_FP <- degs_FP$avg_log2FC                  
+names(gene_list_FP) <- degs_FP$gene                 
+gene_list_FP = sort(gene_list_FP, decreasing = TRUE)
+
+#dl1
+gene_list_dl1 <- degs_dl1$avg_log2FC                  
+names(gene_list_dl1) <- degs_dl1$gene                 
+gene_list_dl1 = sort(gene_list_dl1, decreasing = TRUE)
+
+#dl2
+gene_list_dl2 <- degs_dl2$avg_log2FC                  
+names(gene_list_dl2) <- degs_dl2$gene                 
+gene_list_dl2 = sort(gene_list_dl2, decreasing = TRUE)
+
+#dl3
+gene_list_dl3 <- degs_dl3$avg_log2FC                  
+names(gene_list_dl3) <- degs_dl3$gene                 
+gene_list_dl3 = sort(gene_list_dl3, decreasing = TRUE)
+
+#dl4
+gene_list_dl4 <- degs_dl4$avg_log2FC                  
+names(gene_list_dl4) <- degs_dl4$gene                 
+gene_list_dl4 = sort(gene_list_dl4, decreasing = TRUE)
+
+#dl5
+gene_list_dl5 <- degs_dl5$avg_log2FC                  
+names(gene_list_dl5) <- degs_dl5$gene                 
+gene_list_dl5 = sort(gene_list_dl5, decreasing = TRUE)
+
+#dl6
+gene_list_dl6 <- degs_dl6$avg_log2FC                  
+names(gene_list_dl6) <- degs_dl6$gene                 
+gene_list_dl6 = sort(gene_list_dl6, decreasing = TRUE)
+
+#V0
+gene_list_V0 <- degs_V0$avg_log2FC                  
+names(gene_list_V0) <- degs_V0$gene                 
+gene_list_V0 = sort(gene_list_V0, decreasing = TRUE)
+
+#V1
+gene_list_V1 <- degs_V1$avg_log2FC                  
+names(gene_list_V1) <- degs_V1$gene                 
+gene_list_V1 = sort(gene_list_V1, decreasing = TRUE)
+
+#V2a
+gene_list_V2a <- degs_V2a$avg_log2FC                  
+names(gene_list_V2a) <- degs_V2a$gene                 
+gene_list_V2a = sort(gene_list_V2a, decreasing = TRUE)
+
+#V2b
+gene_list_V2b <- degs_V2b$avg_log2FC                  
+names(gene_list_V2b) <- degs_V2b$gene                 
+gene_list_V2b = sort(gene_list_V2b, decreasing = TRUE)
+
+#MN
+gene_list_MN <- degs_MN$avg_log2FC                  
+names(gene_list_MN) <- degs_MN$gene                 
+gene_list_MN = sort(gene_list_MN, decreasing = TRUE)
+
+#V3
+gene_list_V3 <- degs_V3$avg_log2FC                  
+names(gene_list_V3) <- degs_V3$gene                 
+gene_list_V3 = sort(gene_list_V3, decreasing = TRUE)
+```
+
+
+## Run gseGO for indivudal domains
+```{r,message=FALSE, warning=FALSE}
+
+keytypes(org.Hs.eg.db)   
+head(names(gene_list_RP))   # Use symbol for the GSE as the genes sames are symbols
+
+#RP
+gse_RP <- gseGO(geneList=gene_list_RP, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr")  
+#dp1
+gse_dp1 <- gseGO(geneList=gene_list_dp1, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr")  
+
+#dp2
+gse_dp2 <- gseGO(geneList=gene_list_dp2, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr")  
+
+#dp3
+gse_dp3 <- gseGO(geneList=gene_list_dp3, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr")  
+
+#dp4
+gse_dp4 <- gseGO(geneList=gene_list_dp4, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr")  
+
+#dp5
+gse_dp5 <- gseGO(geneList=gene_list_dp5, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr")  
+
+#dp6
+gse_dp6 <- gseGO(geneList=gene_list_dp6, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+
+#p0
+gse_p0 <- gseGO(geneList=gene_list_p0, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr")
+
+#p1
+gse_p1 <- gseGO(geneList=gene_list_p1, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr")  
+
+#p2
+gse_p2 <- gseGO(geneList=gene_list_p2, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr")  
+
+#pMN
+gse_pMN <- gseGO(geneList=gene_list_pMN, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr")  
+
+#p3
+gse_p3 <- gseGO(geneList=gene_list_p3, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+
+
+#FP
+gse_FP <- gseGO(geneList=gene_list_FP, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+
+#dl1
+gse_dl1 <- gseGO(geneList=gene_list_dl1, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+
+#dl2
+gse_dl2 <- gseGO(geneList=gene_list_dl2, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+
+#dl3
+gse_dl3 <- gseGO(geneList=gene_list_dl3, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+
+#dl4
+gse_dl4 <- gseGO(geneList=gene_list_dl4, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+
+#dl5
+gse_dl5 <- gseGO(geneList=gene_list_dl5, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+
+#dl6
+gse_dl6 <- gseGO(geneList=gene_list_dl6, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+
+#V0
+gse_V0 <- gseGO(geneList=gene_list_V0, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+
+#V1
+gse_V1 <- gseGO(geneList=gene_list_V1, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+
+#V2a
+gse_V2a <- gseGO(geneList=gene_list_V2a, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+
+#V2b
+gse_V2b <- gseGO(geneList=gene_list_V2b, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr")
+
+#MN
+gse_MN <- gseGO(geneList=gene_list_MN, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+
+#V3
+gse_V3 <- gseGO(geneList=gene_list_V3, 
+             ont ="BP",                #BP, CC or MF
+             keyType = "SYMBOL", 
+             nPerm = 10000,            # Number of permutations
+             pvalueCutoff = 0.05, 
+             verbose = TRUE,
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "fdr") 
+```
+## Plots gseGO for individual domains
+```{r,fig.width=10, fig.height=10, message=FALSE, warning=FALSE}
+# progenitors
+plot_gseGO_RP <- dotplot(gse_RP, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("RP - gseGO") 
+plot_gseGO_dp1 <- dotplot(gse_dp1, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("dp1 - gseGO")
+plot_gseGO_dp2 <- dotplot(gse_dp2, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("dp2 - gseGO") 
+plot_gseGO_dp3 <- dotplot(gse_dp3, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("dp3 - gseGO") 
+plot_gseGO_dp4 <- dotplot(gse_dp4, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("dp4 - gseGO") 
+plot_gseGO_dp5 <- dotplot(gse_dp5, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("dp5 - gseGO") 
+plot_gseGO_dp6 <- dotplot(gse_dp6, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("dp6 - gseGO") 
+plot_gseGO_p0 <- dotplot(gse_p0, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("p0 - gseGO") 
+plot_gseGO_p1 <- dotplot(gse_p1, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("p1 - gseGO")
+plot_gseGO_p2 <- dotplot(gse_p2, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("p2 - gseGO") 
+plot_gseGO_pMN <- dotplot(gse_pMN, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("pMN - gseGO") 
+plot_gseGO_p3 <- dotplot(gse_p3, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("p3 - gseGO") 
+# plot_gseGO_FP <- dotplot(gse_FP, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("FP - gseGO") #doesn't work bc no term enriched
+
+#neurons
+plot_gseGO_dl1 <- dotplot(gse_dl1, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("dl1 - gseGO") 
+plot_gseGO_dl2 <- dotplot(gse_dl2, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("dl2 - gseGO") 
+plot_gseGO_dl3 <- dotplot(gse_dl3, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("dl3 - gseGO") 
+plot_gseGO_dl4 <- dotplot(gse_dl4, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("dl4 - gseGO")
+plot_gseGO_dl5 <- dotplot(gse_dl5, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("dl5 - gseGO")
+plot_gseGO_dl6 <- dotplot(gse_dl6, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("dl6 - gseGO") 
+plot_gseGO_V0 <- dotplot(gse_V0, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("V0 - gseGO") 
+plot_gseGO_V1 <- dotplot(gse_V1, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("V1 - gseGO") 
+plot_gseGO_V2a <- dotplot(gse_V2a, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("V2a - gseGO")
+plot_gseGO_V2b <- dotplot(gse_V2b, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("V2b - gseGO") 
+plot_gseGO_MN <- dotplot(gse_MN, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("MN - gseGO") 
+plot_gseGO_V3 <- dotplot(gse_V3, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("V3 - gseGO") 
+
+
+#group domains
+plot_gseGO_progenitors <- (plot_gseGO_RP  + plot_gseGO_pMN + plot_gseGO_p0 + plot_gseGO_p1 + plot_gseGO_p2 + plot_gseGO_p3 + plot_gseGO_dp1 + plot_gseGO_dp2  + plot_gseGO_dp3 + plot_gseGO_dp4 + plot_gseGO_dp5 + plot_gseGO_dp6)+ plot_layout(ncol = 2)
+
+plot_gseGO_neurons <- (plot_gseGO_dl1+ plot_gseGO_dl2+ plot_gseGO_dl3+ plot_gseGO_dl4 + plot_gseGO_dl5 + plot_gseGO_dl6 + plot_gseGO_MN + plot_gseGO_V2a + plot_gseGO_V2b+ plot_gseGO_V0+ plot_gseGO_V1 + plot_gseGO_V3)+ plot_layout(ncol = 2)
+
+
+plot_gseGO_progenitors
+plot_gseGO_neurons
+
+ggsave("gseGO_progenitors.pdf",
+       plot = plot_gseGO_progenitors,
+       width = 14, height = 40, units = "in", dpi = 300)
+
+ggsave("gseGO_neurons.pdf",
+       plot = plot_gseGO_neurons,
+       width = 14, height = 40, units = "in", dpi = 300)
+
+```
+## Run gseGO in CompareCluster (neurons+ progenitors)
+```{r, fig.width=10, fig.height=50, message=FALSE, warning=FALSE}
+
+#CompareClusters gseGO 
+gene_list_gsego_all <- list(
+  RP = gene_list_RP,
+  dp1 = gene_list_dp1,
+  dp2 = gene_list_dp2,
+  dp3 = gene_list_dp3,
+  dp4 = gene_list_dp4,
+  dp5 = gene_list_dp5,
+  dp6 = gene_list_dp6,
+  p0 = gene_list_p0,
+  p1 = gene_list_p1,
+  p2 = gene_list_p2,
+  pMN = gene_list_pMN,
+  p3 = gene_list_p3,
+  FP = gene_list_FP,
+  dl1 = gene_list_dl1,
+  dl2 = gene_list_dl2,
+  dl3 = gene_list_dl3,
+  dl4 = gene_list_dl4,
+  dl5 = gene_list_dl5,
+  dl6 = gene_list_dl6,
+  V0 = gene_list_V0,
+  V1 = gene_list_V1,
+  V2a = gene_list_V2a,
+  V2b = gene_list_V2b,
+  MN = gene_list_MN,
+  V3 = gene_list_V3
+)
+
+# Run compareCluster
+gsego_compare_all <- compareCluster(
+  geneClusters = gene_list_gsego_all,
+  fun = "gseGO",
+  OrgDb = org.Hs.eg.db,
+  keyType = "SYMBOL",
+  ont = "BP",
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "fdr"
+)
+
+```
+## Save and plot unfiltered gseGO (neurons + progenitors)
+```{r, fig.width=10, fig.height=300, message=FALSE, warning=FALSE}
+
+#Convert compareCluster result to dataframe
+csv_gsego_compare_all <- as.data.frame(gsego_compare_all)
+
+#Save to CSV unfiltered
+write.csv(csv_gsego_compare_all, "gsego_compare_all_unfiltered.csv", row.names = FALSE)
+
+# Add NES
+csv_gsego_compare_all <- csv_gsego_compare_all %>%
+  mutate(
+    Direction = case_when(
+      NES > 0 ~ "+",
+      NES < 0 ~ "-",
+      TRUE ~ ""
+    )
+  )
+
+# Put unfiltered results with direction back into the compareCluster object
+gsego_compare_all@compareClusterResult <- csv_gsego_compare_all
+
+
+# Create dotplot with direction labels
+plot_gsego_compare_all <- dotplot(gsego_compare_all, 
+                                       showCategory = 200, 
+                                       title = "gseGO BP Comparison: all domains") +
+  geom_text(aes(label = Direction), 
+            color = "white", 
+            fontface = "bold", 
+            size = 3,
+            vjust = 0.5) +
+   labs(caption = "+ = Activated/Upregulated (NES > 0)\n- = Suppressed/Downregulated (NES < 0)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.caption = element_text(hjust = 0, size = 10, face = "italic"))
+
+# Display
+plot_gsego_compare_all
+
+# Save
+ggsave("gseGO_compare_all_unfiltered.pdf",
+       plot = plot_gsego_compare_all,
+       width = 10, height = 300, units = "in", dpi = 300, limitsize = FALSE)
+
+```
+
+
+
+
+## Save and plot top10 gseGO (neurons+ progenitors) filtered by excluding terms
+```{r, fig.width=10, fig.height=50, message=FALSE, warning=FALSE}
+
+bad_1 <- c("ossification","hemopoiesis","gland development","organelle fission","epithelial cell proliferation","regulation of epithelial cell proliferation","epithelial cell differentiation","epidermis development","cell cycle","metabolism","chromosome","DNA","nuclear division","cell death","epithelium","apoptotic","ear","chromatid","translation","ribosome","metabolic","ribosomal","microtubule","ribonucleoprotein","transcription","lipid","mitotic","spindle","RNA","carbohydrate","biosynthetic","catabolic","cell junction","organelle","organic cyclic","lung","proton","nephron","eye","epithelial","immune system","homophilic cell adhesion","visual system","rythmic process","xenobiotic","plasma membrane bounded","connective tissue development","cartilage development","defense response","chromatin","inflammatory","biomineral","abiotic","osteoblast","placenta")
+
+bad_2 <- c("animal organ morphogenesis","gene expression","respiratory tube development","biological regulation","positive regulation of biological process","negative regulation of cellular process","regulation of biological process","regulation of cellular process","negative regulation of biological process","regulation of Wnt signaling pathway","regulation of canonical Wnt signaling pathway","generation of neurons","axon development","positive regulation of cellular process","regulation of cell projection organization","positive regulation of cell population proliferation","regulation of neural precursor cell proliferation","regulation of nervous system development","circulatory system development","negative regulation of cell differentiation", "regulation of cell development","regulation of cell differentiation","negative regulation of cell development","leukocyte differentiation","rhythmic process","cellular process","regulation of glial cell differentiation","regulation of neuron differentiation","regulation of cell population proliferation","regulation of neuron projection development")
+
+library(stringr)
+re_bad_1 <- str_c(bad_1, collapse = "|")
+re_bad_2 <- str_c("^(", str_c(bad_2, collapse = "|"), ")$")
+
+#Remove unwanted patterns
+csv_gsego_compare_all_exclusion <- csv_gsego_compare_all %>%
+  filter(!str_detect(Description, re_bad_1))
+
+# then remove the rest of unwanted patterns
+csv_gsego_compare_all_exclusion <- csv_gsego_compare_all_exclusion %>%
+  filter(!str_detect(Description, re_bad_2))
+
+#Save to CSV 
+write.csv(csv_gsego_compare_all_exclusion, "gsego_compare_all_exclusion.csv",
+          row.names = FALSE)
+
+
+# Put filtered results back into the compareCluster object
+gsego_compare_all_exclusion <- gsego_compare_all
+gsego_compare_all_exclusion@compareClusterResult <- csv_gsego_compare_all_exclusion
+
+#Add NES
+csv_gsego_compare_all_exclusion <- csv_gsego_compare_all_exclusion %>%
+  mutate(
+    Direction = case_when(
+      NES > 0 ~ "+",
+      NES < 0 ~ "-",
+      TRUE ~ ""
+    )
+  )
+
+# Put filtered results with direction back into the compareCluster object
+gsego_compare_all_exclusion@compareClusterResult <- csv_gsego_compare_all_exclusion
+
+
+# Visualize top 10  
+plot_gsego_compare_all_exclusion <- dotplot(gsego_compare_all_exclusion, 
+                                       showCategory = 10, 
+                                       title = "gseGO BP Comparison: all domains top 10 excluding bad terms") +
+  geom_text(aes(label = Direction), 
+            color = "white", 
+            fontface = "bold", 
+            size = 3,
+            vjust = 0.5) +
+   labs(caption = "+ = Activated/Upregulated (NES > 0)\n- = Suppressed/Downregulated (NES < 0)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.caption = element_text(hjust = 0, size = 10, face = "italic"))
+
+
+
+
+plot_gsego_compare_all_exclusion
+ggsave("gseGO_compare_all_exclusion_top10.pdf",
+       plot = plot_gsego_compare_all_exclusion,
+       width = 10, height = 30, units = "in", dpi = 300, limitsize = FALSE)
+```
+
+
+#Final plot
+```{r, fig.width=9, fig.height=10, message=FALSE, warning=FALSE}
+keep <- c("canonical Wnt signaling pathway","cell population proliferation","neurogenesis", "myelination", "astrocyte differentiation","maintenance of cell number","synaptic signaling","oligodendrocyte development","gliogenesis", "motor neuron axon guidance","cell cycle")
+
+library(stringr)
+library(scales)
+re_keep <- str_c("^(", str_c(keep, collapse = "|"), ")$")
+
+#Remove unwanted patterns
+csv_gsego_compare_final <- csv_gsego_compare_all %>%
+  filter(str_detect(Description, re_keep))
+
+
+#Save to CSV 
+write.csv(csv_gsego_compare_final, "gsego_compare_all_final.csv",
+          row.names = FALSE)
+
+
+# Put filtered results back into the compareCluster object
+gsego_compare_all_final <- gsego_compare_all
+gsego_compare_all_final@compareClusterResult <- csv_gsego_compare_final
+
+#Add NES
+csv_gsego_compare_final <- csv_gsego_compare_final %>%
+  mutate(
+    Direction = case_when(
+      NES > 0 ~ "+",
+      NES < 0 ~ "-",
+      TRUE ~ ""
+    )
+  )
+
+# Put filtered results with direction back into the compareCluster object
+gsego_compare_all_final@compareClusterResult <- csv_gsego_compare_final
+
+
+# Visualize top 10  
+plot_gsego_compare_all_final <- dotplot(gsego_compare_all_final, 
+                                       showCategory = 10, 
+                                       title = "gseGO BP Comparison") +
+  geom_text(aes(label = Direction), 
+            color = "white", 
+            fontface = "bold", 
+            size = 3,
+            vjust = 0.5) +
+  labs(caption = "+ = Activated/Upregulated (NES > 0)\n- = Suppressed/Downregulated (NES < 0)") +
+  scale_y_discrete(labels = label_wrap(20)) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1), 
+    plot.caption = element_text(hjust = 0, size = 10, face = "italic"),
+    axis.text.y = element_text(lineheight = 0.85)
+  )
+
+plot_gsego_compare_all_final
+ggsave("gseGO_compare_all_final.pdf",
+       plot = plot_gsego_compare_all_final,
+       width = 8, height = 10, units = "in", dpi = 300, limitsize = FALSE)
+
+```
